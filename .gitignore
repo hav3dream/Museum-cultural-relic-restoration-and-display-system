@@ -108,3 +108,6 @@ data/
 
 # Uploads
 uploads/
+
+# AI tool workspace
+.workbuddy-ai/
