@@ -1,0 +1,78 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                    BeforeAfterSlider Component                           ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+VISUAL LAYOUT:
+┌────────────────────────────────────────────────────────────────┐
+│  ┌────────┐                              ┌──────────────┐      │
+│  │ 原图   │                              │  修复结果    │      │
+│  └────────┘                              └──────────────┘      │
+│                                                                 │
+│  ╔══════════════════╗═══════════════════════════════════════╗ │
+│  ║                  ║                                        ║ │
+│  ║   BEFORE IMAGE   ║        AFTER IMAGE                    ║ │
+│  ║   (Original)     ║        (Restored)                     ║ │
+│  ║                  ║                                        ║ │
+│  ║                  ║                                        ║ │
+│  ║                  ║   ◄───────  DRAG  ────────►           ║ │
+│  ║                  ║          HANDLE                       ║ │
+│  ║                  ║           (⊙)                         ║ │
+│  ║                  ║            │                          ║ │
+│  ║                  ║         DIVIDER                       ║ │
+│  ║                  ║         (Gold Line)                   ║ │
+│  ║                  ║                                        ║ │
+│  ╚══════════════════╩════════════════════════════════════════╝ │
+│                                                                 │
+└────────────────────────────────────────────────────────────────┘
+
+INTERACTION:
+• User can drag the handle left/right
+• Before image clips at divider position
+• After image shows in full background
+• Smooth animations using Framer Motion
+
+COLORS (Museum Design System):
+• Divider Line: Gold (#d4af37)
+• Drag Handle: Gold with white arrows
+• "原图" Label: Gold/80% opacity badge
+• "修复结果" Label: Brown/80% opacity badge
+
+TECHNICAL DETAILS:
+• Uses clip-path CSS for image clipping
+• Mouse & touch event support
+• Default position: 50%
+• Responsive: max-width 600px, aspect-ratio 4:3
+• Object URLs managed with React hooks
+
+WHERE IT'S USED:
+1. AncientPaintingRestoration - Ancient painting restoration
+2. MuralRestoration - Mural restoration
+3. OutlineAnalysis - Outline/sketch extraction
+4. SteleRestoration - Stone stele restoration
+5. CalligraphyGeneration - (NOT used - text-to-image generation)
+
+ACADEMIC PAPER INFO SECTION:
+┌────────────────────────────────────────────────────────────────┐
+│  论文与模型信息  ▸                                             │
+│                                                                 │
+│  [When expanded:]                                               │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ SGRGAN: Sketch-Guided Restoration GAN...                 │ │
+│  │                                                           │ │
+│  │ 本文提出了一种基于线稿引导的生成对抗网络...              │ │
+│  │                                                           │ │
+│  │ ┌──────────┐  ┌────────────┐                            │ │
+│  │ │模型名称  │  │API端点     │                            │ │
+│  │ │SGRGAN    │  │127.0.0.1..│                            │ │
+│  │ └──────────┘  └────────────┘                            │ │
+│  │ ┌──────────┐  ┌────────────┐                            │ │
+│  │ │输入格式  │  │输出格式    │                            │ │
+│  │ │原始图像  │  │修复后图像  │                            │ │
+│  │ └──────────┘  └────────────┘                            │ │
+│  └──────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
+
+• Collapsible with smooth animation
+• Shows paper title, abstract, and technical details
+• Beige background with brown text
+• Consistent across all 5 restoration pages

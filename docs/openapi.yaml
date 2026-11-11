@@ -1,0 +1,751 @@
+openapi: 3.0.3
+info:
+  title: 博物馆文物修复与展示系统 API
+  description: |
+    博物馆文物修复与展示系统（Museum XinSheng）后端 REST API 文档。
+
+    ## 认证方式
+    所有需要认证的接口通过 HTTP-only Cookie（`auth_token`）鉴权。
+    登录或注册成功后 Cookie 自动设置，后续请求携带即可。
+
+    ## 积分说明
+    每次提交修复任务消耗 1 积分。注册赠送 10 积分。
+    开启 `ACADEMIC_MODE=true` 时跳过积分扣除（开发/演示用）。
+  version: 1.0.0
+  contact:
+    name: 博物馆文物修复与展示系统开发团队
+
+servers:
+  - url: http://localhost:3000
+    description: 本地开发服务器
+  - url: https://museum-restoration.example.com
+    description: 生产环境
+
+tags:
+  - name: 健康检查
+    description: 服务状态
+  - name: 认证
+    description: 注册、登录、登出
+  - name: 修复任务
+    description: AI 图像修复与生成任务
+  - name: 画廊
+    description: 作品浏览与搜索
+  - name: 用户
+    description: 用户信息与仪表盘
+  - name: AI 健康
+    description: AI 模型服务可达性检测
+
+paths:
+
+  # ─── 健康检查 ───────────────────────────────────────────────
+
+  /api/health:
+    get:
+      tags: [健康检查]
+      summary: 服务健康检查
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  # ─── 认证 ────────────────────────────────────────────────────
+
+  /api/auth/register:
+    post:
+      tags: [认证]
+      summary: 用户注册
+      description: 注册新账号，自动赠送 10 积分，成功后设置 auth_token Cookie。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                name:
+                  type: string
+                  maxLength: 100
+                  example: 张三
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 128
+                  example: mypassword123
+      responses:
+        '200':
+          description: 注册成功
+          headers:
+            Set-Cookie:
+              description: auth_token（HTTP-only）
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 邮箱已被注册
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags: [认证]
+      summary: 用户登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 登录成功
+          headers:
+            Set-Cookie:
+              description: auth_token（HTTP-only，7天有效）
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: 邮箱或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 请求频率超限（15分钟内最多10次）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      tags: [认证]
+      summary: 退出登录
+      description: 清除 auth_token Cookie。
+      responses:
+        '200':
+          description: 已退出
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+  /api/auth/me:
+    get:
+      tags: [认证]
+      summary: 获取当前登录用户信息
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: 当前用户信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+                  credits:
+                    type: integer
+                    description: 当前积分余额
+                    example: 8
+                  subscription:
+                    $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ─── 修复任务 ─────────────────────────────────────────────────
+
+  /api/restoration/calligraphy:
+    post:
+      tags: [修复任务]
+      summary: 书法生成（LUO-Calli 专用路由）
+      description: |
+        使用 LUO-Calli 模型（One-DM，端口 5003）生成书法字图。
+        接受纯文本 JSON，不需要上传文件。
+        返回任务 ID，需通过 `GET /api/restoration/:id` 轮询结果。
+        结果为多张单字 PNG 图片（按诗文字序排列）。
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [poem, style_wid]
+              properties:
+                poem:
+                  type: string
+                  description: 诗文内容（非空）
+                  example: 床前明月光
+                style_wid:
+                  type: string
+                  description: 书法家风格编号
+                  enum: ['02', '03', '04', '08', '09', '10']
+                  example: '08'
+            examples:
+              李白诗句:
+                value:
+                  poem: 床前明月光
+                  style_wid: '08'
+      responses:
+        '201':
+          description: 任务创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/restoration:
+    post:
+      tags: [修复任务]
+      summary: 提交图像修复/生成任务
+      description: |
+        通用图像修复接口（`multipart/form-data`）。支持的任务类型：
+
+        | type | 模型 | 必须字段 | 可选字段 |
+        |------|------|---------|---------|
+        | `ancient-painting` | SGRGAN | `file`（破损图）| `mask`（白色=待修复区域）|
+        | `mural` | DCADif | `file`（破损图）、`sketch`（线稿图）| — |
+        | `mural-semantic` | M3SFormer | `file`（破损图）、`mask`（mask图）| — |
+        | `outline` | Relic2Contour | `file` | — |
+        | `stele` | SGRGAN | `file` | `mask` |
+        | `semantic-segmentation` | YOLOv8Seg | `file` | — |
+        | `super-resolution` | ConvSRGAN | `file` | `parameters.scale`（0-100，映射到 2-8x）|
+        | `style-transfer` | CE-CycleGAN | `file`（真实照片）| — |
+        | `pattern-generation` | SGCGAN | `file`（线稿图）| `mask`（风格参考图）|
+
+        > **注意**：`calligraphy` 类型有专用路由，请使用 `POST /api/restoration/calligraphy`。
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - ancient-painting
+                    - mural
+                    - mural-semantic
+                    - outline
+                    - stele
+                    - semantic-segmentation
+                    - super-resolution
+                    - style-transfer
+                    - pattern-generation
+                  description: 任务类型
+                file:
+                  type: string
+                  format: binary
+                  description: 主图像文件（必须）
+                mask:
+                  type: string
+                  format: binary
+                  description: |
+                    Mask 图（SGRGAN 类型：白色区域为待修复部分）
+                    SGCGAN 类型时作为风格参考图（style image）
+                sketch:
+                  type: string
+                  format: binary
+                  description: 线稿图（DCADif/mural 类型使用）
+                algorithm:
+                  type: string
+                  description: 指定算法（可选，默认由 type 决定）
+                parameters:
+                  type: string
+                  description: |
+                    额外参数，JSON 字符串格式。
+                    ConvSRGAN：`{"scale": 50}` （0-100 对应 2-8x 放大倍数）
+                  example: '{"scale": 75}'
+      responses:
+        '201':
+          description: 任务创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          description: 积分不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [修复任务]
+      summary: 获取当前用户的修复任务列表（分页）
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 页码
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: 每页条数
+      responses:
+        '200':
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RestorationItem'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/restoration/{id}:
+    get:
+      tags: [修复任务]
+      summary: 查询修复任务状态与结果
+      description: |
+        轮询此接口获取任务进度。建议每 2 秒轮询一次，最多 150 次（约 5 分钟）。
+
+        `status` 状态值说明：
+        - `pending` — 排队中
+        - `processing` — AI 模型处理中
+        - `completed` — 处理完成，`resultUrls` 可用
+        - `failed` — 处理失败，见 `errorMessage`
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: 任务 ID（由提交接口返回）
+      responses:
+        '200':
+          description: 任务详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RestorationDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 无权访问（非任务所有者）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── 画廊 ────────────────────────────────────────────────────
+
+  /api/gallery/{category}:
+    get:
+      tags: [画廊]
+      summary: 获取指定分类的画廊图片
+      description: 返回静态图片资源 + 用户投稿（已公开的）合并列表。
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 画廊分类标识（如 ancient-painting、mural 等）
+          example: ancient-painting
+      responses:
+        '200':
+          description: 画廊内容
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  meta:
+                    type: object
+                    description: 分类元信息（标题、描述等）
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GalleryItem'
+                  total:
+                    type: integer
+
+  /api/gallery/search:
+    get:
+      tags: [画廊]
+      summary: 搜索画廊作品
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 100
+          description: 搜索关键词（匹配标题、描述、分类）
+      responses:
+        '200':
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GalleryItem'
+                  total:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ─── 用户 ────────────────────────────────────────────────────
+
+  /api/user/dashboard:
+    get:
+      tags: [用户]
+      summary: 获取用户仪表盘数据
+      description: 返回用户信息、积分余额、订阅状态、最近5条修复记录、画廊投稿数量。
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: 仪表盘数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+                  creditBalance:
+                    type: integer
+                    example: 8
+                  subscription:
+                    $ref: '#/components/schemas/Subscription'
+                  recentRestorations:
+                    type: array
+                    maxItems: 5
+                    items:
+                      $ref: '#/components/schemas/RestorationItem'
+                  galleryItemsCount:
+                    type: integer
+                    example: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── AI 健康检测 ──────────────────────────────────────────────
+
+  /api/ai/health:
+    get:
+      tags: [AI 健康]
+      summary: 检测所有 AI 模型服务状态
+      description: |
+        无需认证。检测所有内网 AI Flask 服务的连通性与延迟。
+
+        | 模型 | 地址 | 对应类型 |
+        |------|------|---------|
+        | SGRGAN | 127.0.0.1:5002 | ancient-painting, stele |
+        | DCADif | 127.0.0.1:5004 | mural |
+        | Relic2Contour | 127.0.0.1:5001 | outline |
+        | LuoCalli | 127.0.0.1:5003 | calligraphy |
+        | M3SFormer | 127.0.0.1:25565 | mural-semantic |
+        | YOLOv8Seg | 127.0.0.1:5005 | semantic-segmentation |
+        | ConvSRGAN | 127.0.0.1:5006 | super-resolution |
+        | CECycleGAN | 127.0.0.1:5007 | style-transfer |
+        | SGCGAN | 127.0.0.1:5008 | pattern-generation |
+      responses:
+        '200':
+          description: 各 AI 服务健康状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        ok:
+                          type: boolean
+                        latency:
+                          type: integer
+                          description: 响应延迟（毫秒）
+                        error:
+                          type: string
+                          description: 不可达时的错误描述
+              example:
+                success: true
+                data:
+                  SGRGAN:
+                    ok: true
+                    latency: 12
+                  DCADif:
+                    ok: false
+                    error: 服务未启动
+
+# ─── 组件 ─────────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: HTTP-only JWT Cookie，登录/注册后自动设置
+
+  schemas:
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误描述
+      example:
+        error: Authentication required
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          example: user@example.com
+        name:
+          type: string
+          example: 张三
+        createdAt:
+          type: integer
+          description: Unix 时间戳（毫秒）
+          example: 1700000000000
+
+    Subscription:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+        plan_id:
+          type: string
+        status:
+          type: string
+          enum: [active, canceled, past_due]
+        current_period_start:
+          type: string
+          format: date-time
+        current_period_end:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserInfo'
+        credits:
+          type: integer
+          example: 10
+
+    JobCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              description: 任务 ID（用于轮询状态）
+              example: '42'
+            status:
+              type: string
+              enum: [pending, processing, completed, failed]
+              example: pending
+            type:
+              type: string
+              example: ancient-painting
+
+    RestorationDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '42'
+        type:
+          type: string
+          example: ancient-painting
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        inputFileUrl:
+          type: string
+          description: 上传的原图访问路径
+          example: /uploads/image-1234567890.jpg
+        resultUrls:
+          type: array
+          description: 处理结果图片路径（completed 后可用）
+          items:
+            type: string
+          example:
+            - /uploads/results/ai-result-1234567890-987654321.png
+        algorithm:
+          type: string
+          example: SGRGAN
+        parameters:
+          type: object
+          nullable: true
+          description: 提交时的额外参数
+        errorMessage:
+          type: string
+          nullable: true
+          description: 失败时的错误信息
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    RestorationItem:
+      allOf:
+        - $ref: '#/components/schemas/RestorationDetail'
+      description: 任务列表中的简略项（字段与 RestorationDetail 相同）
+
+    GalleryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          example: static-0
+        url:
+          type: string
+          example: /assets/gallery/ancient-1.jpg
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        isUserSubmitted:
+          type: boolean
+          example: false
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: 未登录或 Token 已过期
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
