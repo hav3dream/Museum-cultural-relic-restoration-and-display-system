@@ -130,7 +130,7 @@
 ## 📁 项目结构
 
 ```
-Museum-cultural-relic-restoration-and-display-system.g/
+Museum-cultural-relic-restoration-and-display-system/
 ├── client/                    # 前端应用
 │   ├── src/
 │   │   ├── components/       # React组件
@@ -194,7 +194,7 @@ Museum-cultural-relic-restoration-and-display-system.g/
 
 ```bash
 git clone <repository-url>
-cd Museum-cultural-relic-restoration-and-display-system.g
+cd Museum-cultural-relic-restoration-and-display-system
 ```
 
 2. **安装依赖**
