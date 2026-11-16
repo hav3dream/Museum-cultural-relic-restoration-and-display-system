@@ -81,7 +81,7 @@ const EXHIBITION_TABS = [
   },
 ];
 
-const HERO_CHARS = ['画', '韵', '新', '生'];
+const HERO_CHARS = ['文', '物', '修', '复', '展', '示'];
 
 // ============================================================
 // PREMIUM COMPONENTS

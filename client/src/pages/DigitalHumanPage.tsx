@@ -811,7 +811,7 @@ export default function DigitalHumanPage() {
               className="text-xs tracking-[0.5em] text-[#D4A76A]/70 uppercase"
               style={{ fontFamily: "'LXGW WenKai', serif" }}
             >
-              华韵新生 · 活化利用
+              文物修复展示 · 活化利用
             </span>
             <div className="h-[1px] w-16 bg-gradient-to-l from-transparent to-[#D4A76A]/60" />
           </motion.div>
