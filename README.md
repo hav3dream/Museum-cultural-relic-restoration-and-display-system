@@ -184,7 +184,8 @@ Museum-cultural-relic-restoration-and-display-system/
 
 ### 环境要求
 
-- **Node.js**: 18.x 或更高版本
+- **Node.js**: 22.x 或更高版本
+  - 原因：后端依赖 better-sqlite3 v12 仅提供 Node 22+（ABI 127+）的预编译二进制。若使用 Node 20 及以下版本，安装时会回退为本地源码编译，需要额外安装编译工具链（Windows 需 Visual Studio Build Tools + Python），否则启动时报 `Could not locate the bindings file ... better_sqlite3.node` 错误。
 - **npm**: 8.x 或更高版本（推荐使用 pnpm）
 - **Python**: 3.8+ (用于AI后端服务)
 
