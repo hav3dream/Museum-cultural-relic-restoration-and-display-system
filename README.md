@@ -186,7 +186,7 @@ Museum-cultural-relic-restoration-and-display-system/
 
 - **Node.js**: 22.x 或更高版本
   - 原因：后端依赖 better-sqlite3 v12 仅提供 Node 22+（ABI 127+）的预编译二进制。若使用 Node 20 及以下版本，安装时会回退为本地源码编译，需要额外安装编译工具链（Windows 需 Visual Studio Build Tools + Python），否则启动时报 `Could not locate the bindings file ... better_sqlite3.node` 错误。
-- **npm**: 8.x 或更高版本（推荐使用 pnpm）
+- **pnpm**: 10.x 或更高版本（必须；项目 lockfile、wouter 补丁和依赖构建白名单均基于 pnpm，使用 npm 安装会缺失补丁与预编译包）
 - **Python**: 3.8+ (用于AI后端服务)
 
 ### 安装步骤
@@ -198,15 +198,36 @@ git clone <repository-url>
 cd Museum-cultural-relic-restoration-and-display-system
 ```
 
-2. **安装依赖**
+2. **确认 Node.js 22+ 已加入 PATH**
 
 ```bash
-npm install
-# 或使用 pnpm（推荐）
+node -v   # 应输出 v22.x 或更高
+```
+
+若本机默认 Node 版本低于 22 且不便全局升级，可下载便携版 Node 22 并临时加入 PATH（Windows 示例）：
+
+```powershell
+$env:PATH = "E:\developsoftware\node-v22.20.0-win-x64;$env:PATH"
+```
+
+> 原因见上文环境要求：better-sqlite3 v12 仅有 Node 22+ 的预编译二进制。
+
+3. **安装依赖**
+
+```bash
 pnpm install
 ```
 
-3. **配置环境变量**
+> 国内网络如遇 better-sqlite3 预编译包下载失败，先设置镜像变量再安装：
+>
+> ```powershell
+> $env:npm_config_better_sqlite3_binary_host_mirror = "https://registry.npmmirror.com/-/binary/better-sqlite3"
+> pnpm install
+> ```
+>
+> 若后端启动时报 `Could not locate the bindings file ... better_sqlite3.node`，即预编译包未下载成功，按上述方式重装即可。
+
+4. **配置环境变量**
 
 复制 `.env.example` 文件并重命名为 `.env`，然后根据实际情况配置：
 
@@ -214,19 +235,25 @@ pnpm install
 cp .env.example .env
 ```
 
-4. **初始化数据库**
+5. **初始化数据库**
 
-数据库会在首次运行时自动初始化。
+数据库会在后端首次启动时自动初始化，无需手动操作。
 
-5. **启动开发服务器**
+6. **启动后端（端口 8888）**
+
+```bash
+npx tsx server/index.ts
+```
+
+7. **启动前端（端口 3000）**
 
 ```bash
 npm run dev
 ```
 
-应用将在 `http://localhost:3000` 上运行。
+前端运行在 `http://localhost:3000`，`/api` 请求自动代理到后端 8888 端口。
 
-6. **构建生产版本**
+8. **构建生产版本**
 
 ```bash
 npm run build
