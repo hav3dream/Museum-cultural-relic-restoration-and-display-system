@@ -762,7 +762,7 @@ export default function DigitalHumanVideoOverlay({
                   className="text-[10px] text-white/20 tracking-widest mt-2"
                   style={{ fontFamily: "'LXGW WenKai', serif" }}
                 >
-                  AI · 数字人 · 华韵新生
+                  AI · 数字人 · 文物修复展示
                 </div>
               </motion.div>
             </motion.div>

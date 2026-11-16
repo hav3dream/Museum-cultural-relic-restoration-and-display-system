@@ -991,7 +991,7 @@ export default function DigitalHumanDemoOverlay({ characterId, onClose, onGenera
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
           >
-            数字人 · AI数字文化 · 华韵新生
+            数字人 · AI数字文化 · 文物修复展示
           </motion.div>
         </motion.div>
       </div>

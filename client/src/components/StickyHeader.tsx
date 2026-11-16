@@ -317,7 +317,7 @@ function StickyHeader({ onMobileMenuOpen, theme = 'dark', title }: StickyHeaderP
                         {/* Brand name with character wave effect */}
                         <div className="relative overflow-hidden text-[24px] font-normal" style={{ fontFamily: "'Ma Shan Zheng', 'LXGW WenKai', cursive", color: textColor }}>
                             <div className="flex">
-                                {['画', '韵', '新', '生'].map((char, index) => (
+                                {['文', '物', '修', '复', '展', '示'].map((char, index) => (
                                     <motion.span
                                         key={index}
                                         animate={{

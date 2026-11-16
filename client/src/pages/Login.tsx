@@ -526,7 +526,7 @@ export default function Login() {
                 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-museum-brown tracking-wide flex justify-center gap-1"
                 style={{ fontFamily: "'Ma Shan Zheng', 'LXGW WenKai', cursive" }}
               >
-                {['画', '韵', '新', '生'].map((char, i) => (
+                {['文', '物', '修', '复', '展', '示'].map((char, i) => (
                   <motion.span
                     key={char}
                     className="inline-block"
